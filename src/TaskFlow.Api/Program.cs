@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Http.HttpResults;
+using TaskFlow.Api.Contracts;
+using TaskFlow.Api.Models;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -16,29 +20,57 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+var tasks = new List<TaskItem>();
 
-app.MapGet("/weatherforecast", () =>
+// GET /tasks
+app.MapGet("/tasks", () =>
 {
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+    return Results.Ok(tasks.Select(x => new TaskResponce(
+        x.Id, x.Title, x.Desription, x.IsCompleted, x.CreatedAt)));
+});
+
+// POST /tasks
+app.MapPost("/tasks", (CreateTaskRequest request) =>
+{
+    var task = new TaskItem
+    {
+        Id = Guid.NewGuid(),
+        Title = request.Title,
+        Desription = request.Description,
+        IsCompleted = false,
+        CreatedAt = DateTime.Now
+    };
+
+    tasks.Add(task);
+
+    var responce = TaskResponce.From(task);
+    return Results.Created($"/tasks/{task.Id}", responce);
+});
+
+// POST /tasks/{id}
+app.MapPost("/tasks/{id:guid}", (Guid id, UpdateTaskRequest request) =>
+{
+    var task = tasks.FirstOrDefault(x => x.Id == id);
+    if (task == null)
+        return Results.NotFound();
+
+    task.Title = request.Title;
+    task.Desription = request.Description;
+    task.IsCompleted = request.IsCompleted;
+
+    return Results.NoContent();
+});
+
+// DELETE /tasks/{id}
+app.MapDelete("/tasks/{id:guid}", (Guid id) =>
+{
+    var task = tasks.FirstOrDefault(x => x.Id == id);
+    if (task == null)
+        return Results.NotFound();
+
+    tasks.Remove(task);
+
+    return Results.NoContent();
+});
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
