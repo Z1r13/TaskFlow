@@ -25,7 +25,7 @@ var tasks = new List<TaskItem>();
 // GET /tasks
 app.MapGet("/tasks", () =>
 {
-    return Results.Ok(tasks.Select(x => new TaskResponce(
+    return Results.Ok(tasks.Select(x => new TaskResponse(
         x.Id, x.Title, x.Desription, x.IsCompleted, x.CreatedAt)));
 });
 
@@ -43,7 +43,7 @@ app.MapPost("/tasks", (CreateTaskRequest request) =>
 
     tasks.Add(task);
 
-    var responce = TaskResponce.From(task);
+    var responce = TaskResponse.From(task);
     return Results.Created($"/tasks/{task.Id}", responce);
 });
 
