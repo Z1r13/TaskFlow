@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Contracts;
 using TaskFlow.Api.Data;
-using TaskFlow.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,40 +24,40 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var tasks = new List<TaskItem>();
-
 // GET /tasks
 app.MapGet(
     "/tasks",
-    () =>
+    async (AppDbContext db) =>
     {
-        return Results.Ok(
-            tasks.Select(x => new TaskResponse(
-                x.Id,
-                x.Title,
-                x.Desсription,
-                x.IsCompleted,
-                x.CreatedAt
-            ))
-        );
+        var tasks = await db.Tasks.ToListAsync();
+        var responce = tasks.Select(x => new TaskResponse(
+            x.Id,
+            x.Title,
+            x.Description,
+            x.IsCompleted,
+            x.CreatedAt
+        ));
+
+        return Results.Ok(responce);
     }
 );
 
 // POST /tasks
 app.MapPost(
     "/tasks",
-    (CreateTaskRequest request) =>
+    async (CreateTaskRequest request, AppDbContext db) =>
     {
-        var task = new TaskItem
+        var task = new TaskEntity
         {
             Id = Guid.NewGuid(),
             Title = request.Title,
-            Desсription = request.Description,
+            Description = request.Description,
             IsCompleted = false,
-            CreatedAt = DateTime.Now,
+            CreatedAt = DateTime.UtcNow,
         };
 
-        tasks.Add(task);
+        db.Tasks.Add(task);
+        await db.SaveChangesAsync();
 
         var responce = TaskResponse.From(task);
         return Results.Created($"/tasks/{task.Id}", responce);
@@ -68,16 +67,17 @@ app.MapPost(
 // POST /tasks/{id}
 app.MapPost(
     "/tasks/{id:guid}",
-    (Guid id, UpdateTaskRequest request) =>
+    async (Guid id, UpdateTaskRequest request, AppDbContext db) =>
     {
-        var task = tasks.FirstOrDefault(x => x.Id == id);
-        if (task == null)
+        var task = await db.Tasks.FindAsync(id);
+        if (task is null)
             return Results.NotFound();
 
         task.Title = request.Title;
-        task.Desсription = request.Description;
+        task.Description = request.Description;
         task.IsCompleted = request.IsCompleted;
 
+        await db.SaveChangesAsync();
         return Results.NoContent();
     }
 );
@@ -85,14 +85,14 @@ app.MapPost(
 // DELETE /tasks/{id}
 app.MapDelete(
     "/tasks/{id:guid}",
-    (Guid id) =>
+    async (Guid id, AppDbContext db) =>
     {
-        var task = tasks.FirstOrDefault(x => x.Id == id);
-        if (task == null)
+        var task = await db.Tasks.FindAsync(id);
+        if (task is null)
             return Results.NotFound();
 
-        tasks.Remove(task);
-
+        db.Tasks.Remove(task);
+        await db.SaveChangesAsync();
         return Results.NoContent();
     }
 );

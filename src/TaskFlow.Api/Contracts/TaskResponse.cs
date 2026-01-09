@@ -1,4 +1,4 @@
-using TaskFlow.Api.Models;
+using TaskFlow.Api.Data;
 
 namespace TaskFlow.Api.Contracts;
 
@@ -10,6 +10,6 @@ public record TaskResponse(
     DateTime CreatedAt
 )
 {
-    public static TaskResponse From(TaskItem task) =>
-        new(task.Id, task.Title, task.Desсription, task.IsCompleted, task.CreatedAt);
+    public static TaskResponse From(TaskEntity task) =>
+        new(task.Id, task.Title, task.Description, task.IsCompleted, task.CreatedAt);
 }
