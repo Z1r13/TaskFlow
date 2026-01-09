@@ -26,7 +26,7 @@ var tasks = new List<TaskItem>();
 app.MapGet("/tasks", () =>
 {
     return Results.Ok(tasks.Select(x => new TaskResponse(
-        x.Id, x.Title, x.Desription, x.IsCompleted, x.CreatedAt)));
+        x.Id, x.Title, x.Desсription, x.IsCompleted, x.CreatedAt)));
 });
 
 // POST /tasks
@@ -36,7 +36,7 @@ app.MapPost("/tasks", (CreateTaskRequest request) =>
     {
         Id = Guid.NewGuid(),
         Title = request.Title,
-        Desription = request.Description,
+        Desсription = request.Description,
         IsCompleted = false,
         CreatedAt = DateTime.Now
     };
@@ -55,7 +55,7 @@ app.MapPost("/tasks/{id:guid}", (Guid id, UpdateTaskRequest request) =>
         return Results.NotFound();
 
     task.Title = request.Title;
-    task.Desription = request.Description;
+    task.Desсription = request.Description;
     task.IsCompleted = request.IsCompleted;
 
     return Results.NoContent();

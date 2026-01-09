@@ -10,7 +10,7 @@ public record TaskResponse(Guid Id,
     )
 {
     public static TaskResponse From(TaskItem task) =>
-        new(task.Id, task.Title, task.Desription, task.IsCompleted, task.CreatedAt);
+        new(task.Id, task.Title, task.Desсription, task.IsCompleted, task.CreatedAt);
 }
 
 
