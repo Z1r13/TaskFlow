@@ -59,7 +59,13 @@ app.MapPost(
         db.Tasks.Add(task);
         await db.SaveChangesAsync();
 
-        var responce = TaskResponse.From(task);
+        var responce = new TaskResponse(
+            task.Id,
+            task.Title,
+            task.Description,
+            task.IsCompleted,
+            task.CreatedAt
+        );
         return Results.Created($"/tasks/{task.Id}", responce);
     }
 );
