@@ -1,21 +1,27 @@
-using Microsoft.AspNetCore.Http.HttpResults;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Contracts;
 using TaskFlow.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = ctx =>
+    {
+        ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
+    };
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -23,6 +29,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 // GET /tasks
 app.MapGet(
@@ -45,8 +53,14 @@ app.MapGet(
 // POST /tasks
 app.MapPost(
     "/tasks",
-    async (CreateTaskRequest request, AppDbContext db) =>
+    async (CreateTaskRequest request, AppDbContext db, IValidator<CreateTaskRequest> validator) =>
     {
+        var validationResult = await validator.ValidateAsync(request);
+        if (!validationResult.IsValid)
+        {
+            return Results.ValidationProblem(validationResult.ToDictionary());
+        }
+
         var task = new TaskEntity
         {
             Id = Guid.NewGuid(),
@@ -73,11 +87,26 @@ app.MapPost(
 // POST /tasks/{id}
 app.MapPost(
     "/tasks/{id:guid}",
-    async (Guid id, UpdateTaskRequest request, AppDbContext db) =>
+    async (
+        Guid id,
+        UpdateTaskRequest request,
+        AppDbContext db,
+        IValidator<UpdateTaskRequest> validator
+    ) =>
     {
+        var validationResult = await validator.ValidateAsync(request);
+        if (!validationResult.IsValid)
+        {
+            return Results.ValidationProblem(validationResult.ToDictionary());
+        }
+
         var task = await db.Tasks.FindAsync(id);
         if (task is null)
-            return Results.NotFound();
+            return Results.Problem(
+                title: "Task not found",
+                detail: $"Task {id} doesn't exist",
+                statusCode: StatusCodes.Status404NotFound
+            );
 
         task.Title = request.Title;
         task.Description = request.Description;
@@ -95,7 +124,11 @@ app.MapDelete(
     {
         var task = await db.Tasks.FindAsync(id);
         if (task is null)
-            return Results.NotFound();
+            return Results.Problem(
+                title: "Task not found",
+                detail: $"Task {id} doesn't exist",
+                statusCode: StatusCodes.Status404NotFound
+            );
 
         db.Tasks.Remove(task);
         await db.SaveChangesAsync();
