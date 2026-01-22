@@ -15,7 +15,6 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>
 {
-    // Определяем схему безопасности (как будем аутентифицироваться)
     options.AddSecurityDefinition(
         "Bearer",
         new OpenApiSecurityScheme
@@ -29,7 +28,6 @@ builder.Services.AddSwaggerGen(options =>
         }
     );
 
-    // Требуем токен для всех эндпоинтов
     options.AddSecurityRequirement(
         new OpenApiSecurityRequirement
         {
@@ -80,9 +78,22 @@ builder
         };
     });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(
+        "AllowAll",
+        policy =>
+        {
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        }
+    );
+});
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+app.UseCors("AllowAll");
 
 if (app.Environment.IsDevelopment())
 {
@@ -206,8 +217,8 @@ app.MapPost(
     )
     .RequireAuthorization();
 
-// POST /tasks/{id}
-app.MapPost(
+// PUT /tasks/{id}
+app.MapPut(
         "/tasks/{id:guid}",
         async (
             Guid id,
