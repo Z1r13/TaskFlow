@@ -287,3 +287,6 @@ app.MapDelete(
     .RequireAuthorization();
 
 app.Run();
+
+// public Program class for tests
+public partial class Program { }
